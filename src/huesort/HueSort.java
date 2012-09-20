@@ -76,13 +76,19 @@ public class HueSort extends PApplet {
 		toxi.color.Histogram hist = toxi.color.Histogram.newFromARGBArray(a.pixels, IMG_SAMPLES, IMG_TOLERANCE, false);
 		//hist.compute(IMG_TOLERANCE, false);
 		List<HistEntry> aHistEntries = hist.getEntries();
+
+		
 		int p =0;
 		for (Iterator iterator = aHistEntries.iterator(); iterator.hasNext();) {
 			HistEntry histEntry = (HistEntry) iterator.next();
-			println(p + ":  Color: " + histEntry.getColor().toHex()+ "\t\t" + histEntry.getFrequency());
-			
+			TColor t = histEntry.getColor();
+			println(p + ":  Color: " + histEntry.getColor().toHex()+ "\t\t" + histEntry.getFrequency()); //DEBUGGING
 			p++;
 		}
+		
+		toxi.color.HistEntry h = aHistEntries.get(0);
+		TColor t = h.getColor();
+		println("Dominant Hue: " + t.hue());
 		
 		
 	}
