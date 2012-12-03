@@ -20,7 +20,7 @@ import toxi.math.*;
 
 public class HueSort extends PApplet {
 	
-	int IMG_NUM = 90; //DEBUGGING, set to 0 to use all images in text file
+	int IMG_NUM = 20; //DEBUGGING, set to 0 to use all images in text file
 	int IMG_SAMPLES = 1000;
 	Float IMG_TOLERANCE = 0.10f;
 	Boolean BATCH_MODE = true;
@@ -54,14 +54,11 @@ public class HueSort extends PApplet {
 		} else {
 			processNewImage(SINGLE_IMAGE);
 		}
-		
 		sortHueHash();
 		drawPImages();
 		
 		println ("\nUsing SAMPLES: " + IMG_SAMPLES + " TOLERANCE: " + IMG_TOLERANCE);
 		noLoop();
-		
-		
 	}
 
 	public void draw() {
@@ -75,7 +72,6 @@ public class HueSort extends PApplet {
 	 * 
 	 * @param String imageFileName
 	 */
-	@SuppressWarnings("unused")
 	void processNewImage(String imageFileName) {
 		PImage a;
 		a = loadImage(imageFileName);
@@ -86,7 +82,9 @@ public class HueSort extends PApplet {
 		//fist element of histogram is the most frequent color
 		toxi.color.HistEntry h = aHistEntries.get(0);
 		TColor t = h.getColor();
-		//println("Dominant Hue: " + t.hue() + "\t Color: " + t.toHex() + "\t file: " + imageFileName); //DEBUGGING
+		println("Dominant Hue: " + t.hue() + "\t Color: " + t.toHex() + "\t file: " + imageFileName); //DEBUGGING
+		println("\tIs color grey?: " + t.isGrey() + " file: " + imageFileName); //DEBUGGING
+		println("\tBrightness: " + t.brightness() + " Saturation: " + t.saturation() + "\t file: " + imageFileName + "\n"); //DEBUGGING
 		
 		//add to hues hashmap
 		imageHues.put(imageFileName, t);
@@ -118,10 +116,10 @@ public class HueSort extends PApplet {
 		
 		for (Entry<String, TColor> entry : entries) {
 			sortedimageHues.put(entry.getKey(), entry.getValue());
-		}
-		
+		}	
 		//println(sortedimageHues.toString()); //DEBUGGING
 	}
+	
 	
 	/**
 	 *  
