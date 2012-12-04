@@ -1,10 +1,14 @@
 *.class
+*.classpath
+*.pref
+*.orig
 
 # Package Files #
 *.jar
 *.war
 *.ear
 
+/.settings/*
 /bin/
 /.DS_Store
 /src/data/*

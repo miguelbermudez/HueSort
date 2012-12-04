@@ -20,12 +20,12 @@ import toxi.math.*;
 
 public class HueSort extends PApplet {
 	
-	int IMG_NUM = 200; //DEBUGGING, set to 0 to use all images in text file
-	int IMG_SAMPLES = 2000;
-	int IMG_RESIZE_MAXWIDTH = 200;
+	int IMG_NUM = 100; //DEBUGGING, set to 0 to use all images in text file
+	int IMG_SAMPLES = 3000;
+	int IMG_RESIZE_MAXWIDTH = 300;
 	Float IMG_TOLERANCE = 0.1f;
 	Float SAT_TOLERANCE = 0.4f;
-	Float BRIGHT_TOLERANCE = 0.20f;
+	Float BRIGHT_TOLERANCE = 0.80f;
 	
 	Boolean BATCH_MODE = true;
 	Boolean IMG_RESIZE = true;
@@ -226,7 +226,7 @@ public class HueSort extends PApplet {
 				frame = pg.get();
 				image(frame, widthCounter, lineCounter);
 				println(String.format("%d-%s", filecount, imageBasename ));
-				//frame.save(String.format("./hueImages/%d-%s", filecount, imageBasename ));
+				frame.save(String.format("./hueImages/%d-%s", filecount, imageBasename ));
 			} else {
 				image(p, widthCounter, lineCounter);
 				fill(c.toARGB());
