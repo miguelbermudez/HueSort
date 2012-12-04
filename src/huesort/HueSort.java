@@ -20,23 +20,24 @@ import toxi.math.*;
 
 public class HueSort extends PApplet {
 	
-	int IMG_NUM = 100; //DEBUGGING, set to 0 to use all images in text file
-	int IMG_SAMPLES = 3000;
+	int IMG_NUM = 10; //DEBUGGING, set to 0 to use all images in text file
+	int IMG_SAMPLES = 512;
 	int IMG_RESIZE_MAXWIDTH = 300;
-	Float IMG_TOLERANCE = 0.1f;
-	Float SAT_TOLERANCE = 0.4f;
-	Float BRIGHT_TOLERANCE = 0.80f;
+	
+	int processcount = 0;
+	
+	Float IMG_TOLERANCE = 0.33f;
+	Float MIN_BRIGHTNESS = 0.60f;
+	Float MIN_SATURATION = 0.30f;
 	
 	Boolean BATCH_MODE = true;
 	Boolean IMG_RESIZE = true;
 	Boolean DRAW_INTO_BUFFER = true;
-	Boolean FILTER_COLORS = true;
 	
 	String LIST_OF_IMAGES = "data/artwork.txt";
 	String SINGLE_IMAGE = "data/artwork/1x/DT45.jpg";
+	File CURRENT_FILE;
 	
-	PImage a;
-	PGraphics pg;
 	HashMap<String, TColor> imageHues = new HashMap<String, TColor>();
 	Map<String, TColor> sortedimageHues;
 	
@@ -52,17 +53,15 @@ public class HueSort extends PApplet {
 			//println("listOfImages: " + listOfImages); //DEBUGGING
 			if(f.exists()) {
 				String[] imageList = loadStrings(f);
-				if (imageList.length > 0 ) {
-					int count = IMG_NUM == 0 ? imageList.length : IMG_NUM;
+				if (imageList.length > 0 ) { int count = IMG_NUM == 0 ? imageList.length : IMG_NUM;
 					for (int i = 0; i < count; i++) {
 						//println(imageList[i].trim()); //DEBUGGING
 						File w = new File(imageList[i].trim());
-						//processNewImage(imageList[i].trim());
-						processNewImage(w.getPath());
+						CURRENT_FILE = w;
+						processNewImage(CURRENT_FILE.getPath());
 					}
 				}
-			} else {
-				println("*** MISSING " + LIST_OF_IMAGES + " ****");
+			} else { println("*** MISSING " + LIST_OF_IMAGES + " ****");
 			}
 		} else {
 			processNewImage(SINGLE_IMAGE);
@@ -77,39 +76,6 @@ public class HueSort extends PApplet {
 	public void draw() {
 	}
 	
-	/**
-	 *  
-	 * Get a histogram entry from the passed in list. If that hist entry's 
-	 * brightness or saturation is below a certain threshold, try again.
-	 * 
-	 * Return the first result that satisfies those requirements.
-	 * 
-	 * @param List<HistEntry> colorlist
-	 * @return 
-	 * @return TColor t
-	 */
-	TColor getHisEntry( List<HistEntry> colorHistEntires) {
-		TColor t;
-		TColor selected_t = (colorHistEntires.get(0)).getColor();
-		toxi.color.HistEntry h;
-		int maxListIndex = colorHistEntires.size();
-		int listCount = 0;
-		
-		mainloop:
-		for (int i=0; i<colorHistEntires.size(); i++) {
-			h = colorHistEntires.get(i);
-			t = h.getColor();
-			
-			if (t.saturation() > SAT_TOLERANCE && t.brightness() > BRIGHT_TOLERANCE) {
-				selected_t = t;
-				listCount = i;
-				break mainloop;
-			}
-		}
-		//println(String.format("Returned color at %d - sat: %f, sat-tol: %f", listCount, selected_t.saturation(), SAT_TOLERANCE));
-		return selected_t;
-	}
-	
 	
 	/**
 	 *  
@@ -118,31 +84,35 @@ public class HueSort extends PApplet {
 	 * @param String imageFileName
 	 */
 	void processNewImage(String imageFileName) {
-		//PImage a;
+		println(String.format("Processing %d of %d -> %s", ++processcount, IMG_NUM, imageFileName));
+		PImage quantizedImg, a;
+		Histogram hist, quantizedHist;
+		
 		a = loadImage(imageFileName);
-		//toxi.color.Histogram hist = toxi.color.Histogram.newFromARGBArray(a.pixels, IMG_SAMPLES, IMG_TOLERANCE, false);
-		toxi.color.Histogram hist = toxi.color.Histogram.newFromARGBArray(a.pixels, a.pixels.length/4, IMG_TOLERANCE, true);
-
+		hist = Histogram.newFromARGBArray(a.pixels, a.pixels.length, IMG_TOLERANCE, true);
+		quantizedImg = quantizeImage(a, hist);
 		
-		List<HistEntry> aHistEntries = hist.getEntries();
+		quantizedHist = Histogram.newFromARGBArray(quantizedImg.pixels, quantizedImg.pixels.length, IMG_TOLERANCE, false);
 		
-		TColor t = TColor.newRandom();
-		if (FILTER_COLORS) {
-			//fist element of histogram is the most frequent color
-			t = getHisEntry(aHistEntries);	
-		} else {
-		    toxi.color.HistEntry h = aHistEntries.get(0);
-		    t = h.getColor();
+		TColor t =  (quantizedHist.getEntries().get(0)).getColor();
+		//find something brighter
+		quantloop:
+		for (int j = 0; j < quantizedHist.getEntries().size(); j++) {
+			HistEntry h = quantizedHist.getEntries().get(j);
+			TColor _t = h.getColor();
+			
+			if (t.brightness() > MIN_BRIGHTNESS ) {
+				//exit out of loop on first occurence of something brighter than threshold
+				t = _t;
+//				println(String.format("Found brightness: %f", t.brightness()));
+				break quantloop;
+			} 
 		}
 		
-//		println("Dominant Hue: " + t.hue() + "\t Color: " + t.toHex() + "\t file: " + imageFileName); //DEBUGGING
-//		println("\tIs color grey?: " + t.isGrey() + " file: " + imageFileName); //DEBUGGING
-//		println("\tBrightness: " + t.brightness() + " Saturation: " + t.saturation() + "\t file: " + imageFileName + "\n"); //DEBUGGING
-		
-		//add to hues hashmap
-		imageHues.put(imageFileName, t);
+		//add filename and hue to hashmap
+		imageHues.put(CURRENT_FILE.getPath(), t);
 	}
-	
+
 	
 	/**
 	 *  
@@ -161,6 +131,7 @@ public class HueSort extends PApplet {
 			public int compare(Entry<String, TColor> left, Entry<String, TColor> right) {
 				Float rightHue = right.getValue().hue();
 				Float leftHue = left.getValue().hue();
+//				return rightHue.compareTo(leftHue);
 				return rightHue.compareTo(leftHue);
 			}
 		});
@@ -175,6 +146,36 @@ public class HueSort extends PApplet {
 	
 	
 	/**
+	 * Take source image and reduce to the number of colors in the histogram
+	 * and save in the work image
+	 * 
+	 * @param mSourceImg
+	 * @param mHist
+	 * 
+	 * @return PImage
+	 */
+	PImage quantizeImage(PImage mSourceImg, Histogram mHist) {
+		PImage workImg = new PImage(mSourceImg.width, mSourceImg.height, ARGB);
+		TColor col = TColor.BLACK.copy();
+		
+		for (int i = 0; i < mSourceImg.pixels.length; i++) {
+			col.setARGB(mSourceImg.pixels[i]);
+			TColor closest = col;
+			float minD = 1;
+			for (HistEntry e : mHist) {
+				float d = col.distanceToRGB(e.getColor());
+				if (d < minD) {
+					minD = d;
+					closest = e.getColor();
+				}
+			}
+			workImg.pixels[i] = closest.toARGB();
+		}
+		workImg.updatePixels();
+		return workImg;
+	}
+		
+	/**
 	 *  
 	 * Draw Images to screen with color swatch on top
 	 * 
@@ -186,13 +187,11 @@ public class HueSort extends PApplet {
 		int filecount = 0;
 		int swatchSize = 50;
 		
-		
-		int i = 0;
 		for (Entry<String, TColor> entry : sortedimageHues.entrySet())
 		{		    
 			String file = entry.getKey(); 
 			PImage p = loadImage(file);
-			PImage frame;
+			PImage outputframe;
 			PGraphics pg; 
 			TColor c = entry.getValue();
 			File imageFilename = new File(file);
@@ -208,7 +207,6 @@ public class HueSort extends PApplet {
 				lineCounter += maxHeight;
 				maxHeight = 0;
 			}
-			
 						
 			if (DRAW_INTO_BUFFER) {
 				pg = createGraphics(p.width, p.height);
@@ -219,29 +217,29 @@ public class HueSort extends PApplet {
 				  pg.stroke(TColor.WHITE.toARGB());
 				  pg.rect(0, 0, swatchSize, swatchSize);
 				  pg.fill(TColor.WHITE.toARGB());
-				  pg.text(c.hue(), 0, (1.5f*swatchSize));
+				  pg.text("h:"+c.hue(), 0, (1.2f*swatchSize));
+				  pg.text("s:"+c.saturation(), 0, (1.2f*swatchSize + 14));
+				  pg.text("b:"+c.brightness(), 0, (1.2f*swatchSize + 28));
 				pg.endDraw();
 				
-				frame = createImage(p.width, p.height, ARGB);
-				frame = pg.get();
-				image(frame, widthCounter, lineCounter);
+				outputframe = createImage(p.width, p.height, ARGB);
+				outputframe = pg.get();
+				//image(outputframe, widthCounter, lineCounter);
 				println(String.format("%d-%s", filecount, imageBasename ));
-				frame.save(String.format("./hueImages/%d-%s", filecount, imageBasename ));
+				outputframe.save(String.format("./hueImages/%d-%s", filecount, imageBasename ));
 			} else {
-				image(p, widthCounter, lineCounter);
-				fill(c.toARGB());
-				stroke(TColor.WHITE.toARGB());
-				//rect(widthCounter, lineCounter+p.height-20, 20, 20);
-				rect(widthCounter, lineCounter, swatchSize, swatchSize);
-				fill(TColor.WHITE.toARGB());
-				text(c.hue(), widthCounter, lineCounter+(1.5f*swatchSize));
+//				image(p, widthCounter, lineCounter);
+//				fill(c.toARGB());
+//				stroke(TColor.WHITE.toARGB());
+//				rect(widthCounter, lineCounter, swatchSize, swatchSize);
+//				fill(TColor.WHITE.toARGB());
+//				text(c.hue(), widthCounter, lineCounter+(1.5f*swatchSize));
 			}
 			
 //			println(i + ": " + file + "\t\tHue: " + c.hue() 
 //					+ "\tColor: "+ c.toHex()); 
 			    
 			widthCounter+=p.width;
-			i++;
 			filecount++;
 					  
 		}
